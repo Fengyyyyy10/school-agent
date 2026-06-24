@@ -1,0 +1,14 @@
+<view class="tab-bar">
+  <view class="tab-item {{active === 'chat' ? 'active' : ''}}" data-path="chat" bindtap="switchTab">
+    <text class="tab-icon">💬</text>
+    <text class="tab-label">聊天</text>
+  </view>
+  <view class="tab-item {{active === 'campus' ? 'active' : ''}}" data-path="campus" bindtap="switchTab">
+    <text class="tab-icon">🏛️</text>
+    <text class="tab-label">校园</text>
+  </view>
+  <view class="tab-item {{active === 'profile' ? 'active' : ''}}" data-path="profile" bindtap="switchTab">
+    <text class="tab-icon">👤</text>
+    <text class="tab-label">我的</text>
+  </view>
+</view>
