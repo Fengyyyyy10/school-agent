@@ -4,6 +4,7 @@ from typing import Optional
 import os
 import sys
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -21,8 +22,16 @@ from campus_notice import get_notices, search_notices, get_notice_detail
 from campus_navigation import get_all_locations, get_locations_by_category, search_locations, get_location_detail
 from library_service import search_books, get_borrowed_books, get_borrow_history, get_hot_books, get_book_detail
 from workflow import StudentWorkflow
+from database import init_db, save_messages, get_messages, delete_user_messages
 
-app = FastAPI(title="Campus Information API", version="2.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="Campus Information API", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -86,6 +95,19 @@ class QAResponse(BaseModel):
     data: Optional[dict] = None
     answer: Optional[str] = None
     source: Optional[str] = None
+
+
+class HistoryRequest(BaseModel):
+    username: str
+
+
+class SaveMessagesRequest(BaseModel):
+    username: str
+    messages: list
+
+
+class DeleteHistoryRequest(BaseModel):
+    username: str
 
 
 def get_student_dir(username: str) -> str:
@@ -425,6 +447,39 @@ async def api_lib_hot(limit: int = 10):
 @app.get("/api/library/book/{book_id}")
 async def api_lib_book_detail(book_id: str):
     return get_book_detail(book_id)
+
+
+@app.get("/api/chat/history")
+async def chat_history(username: str = ""):
+    if not username:
+        return {"success": False, "messages": []}
+    try:
+        msgs = get_messages(username)
+        return {"success": True, "messages": msgs, "total": len(msgs)}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
+@app.post("/api/chat/save")
+async def chat_save(request: SaveMessagesRequest):
+    if not request.username or not request.messages:
+        return {"success": False, "message": "invalid params"}
+    try:
+        save_messages(request.username, request.messages)
+        return {"success": True, "saved": len(request.messages)}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
+@app.delete("/api/chat/history")
+async def chat_delete_history(username: str = ""):
+    if not username:
+        return {"success": False}
+    try:
+        delete_user_messages(username)
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 
 @app.get("/")
